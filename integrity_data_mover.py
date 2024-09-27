@@ -1,14 +1,12 @@
-import os
 from pathlib import Path
-import hashlib
 import shutil
- 
-
+from md5helper import MD5Helper 
 
 class IntegrityDataMover:
 
     def __init__(self, src:str, dest:str):
-        self._hash_md5 = hashlib.md5()
+        self._md5helper = MD5Helper()
+        self._md5list_filename = "md5_hashes.txt"
 
         self._srcpath = Path(src)
         if not self._srcpath.exists() :
@@ -71,88 +69,19 @@ class IntegrityDataMover:
                 shutil.copytree(item, dest_item)
             else:
                 shutil.copy2(item, dest_item)
+             
  
     def collect_existing_items_in_destination(self): 
         # Pre-check: Collect existing files/directories in the destination
         existing_items = []
         for item in self._srcpath.iterdir():
-                dest_item = self._destpath / item.name
-                if dest_item.exists():
-                    if dest_item.is_file():
-                        existing_items.append(f"File:  {dest_item}")
-                    else: 
-                        existing_items.append(f"Dir :  {dest_item}")
+            dest_item = self._destpath / item.name
+            if dest_item.exists():
+                if dest_item.is_file():
+                    existing_items.append(f"File:  {dest_item}")
+                else: 
+                    existing_items.append(f"Dir :  {dest_item}")
         return existing_items
-    
-    def checksum_validation(self):
-        """
-        Validates the MD5 checksum of each file in the destination directory against
-        the values listed in 'md5_hashes.txt' in each directory.
-
-        Args:
-        - destdir (Path): The destination directory where the copied files reside.
-        
-        Raises:
-        - ValueError: If the destination directory does not exist.
-        - FileNotFoundError: If an 'md5_hashes.txt' file is missing in any subdirectory.
-        - RuntimeError: If any file's checksum does not match the expected checksum.
-        """
-        
-        # Traverse destination directory and check MD5 hashes
-        for root, _, files in os.walk(self._destpath):
-            root_path = Path(root)
-            md5_file_path = root_path / "md5_hashes.txt"
-            
-            # Ensure md5_hashes.txt exists
-            if not md5_file_path.exists():
-                raise FileNotFoundError(f"Checksum file 'md5_hashes.txt' is missing in directory: {root}")
-            
-            # Load expected hashes from md5_hashes.txt
-            expected_hashes = {}
-            with open(md5_file_path, "r") as f:
-                for line in f:
-                    file_path, md5_hash_value = line.strip().split(": ")
-                    expected_hashes[file_path] = md5_hash_value
-            
-            # Check each file's MD5 against the expected value
-            for file_name, expected_md5 in expected_hashes.items():
-                file_path = root_path / file_name
-                if not file_path.exists():
-                    raise FileNotFoundError(f"File '{file_name}' listed in 'md5_hashes.txt' does not exist in the destination.")
-
-                actual_md5 = self.create_md5_from_file(file_path)
-                if actual_md5 != expected_md5:
-                    print(f"Checksum mismatch for file '{file_name}' in '{root}': expected {expected_md5}, got {actual_md5}")
-        
-        print("All checksum validation done.")    
-        
-   
-    def create_md5_from_file(self, fname:Path):
-        
-        with open(fname, "rb") as f:
-            for chunk in iter(lambda: f.read(4096), b""):
-                self._hash_md5.update(chunk)
-        return self._hash_md5.hexdigest()
-    
-    def write_file_hashes(self):
-        """
-            Traverse the directory and subdirectories, creating 'md5_hashes.txt' 
-            with key: value-painrs: filename: md5-hash.
-        """
-        for root, _, files in os.walk(self._src):
-            file_hashes = {}
-            
-            for filename in files:
-                file_path = os.path.join(root, filename)
-                file_hashes[filename] = self.create_md5_from_file(file_path)
-            
-            # Write to files.txt
-            with open(os.path.join(root, "md5_hashes.txt"), "w") as f:
-                for filename, file_hash in file_hashes.items():
-                    f.write(f"{filename}: {file_hash}\n")    
-        
-
-
 
 def main():
     src = r"C:\tmp\testsrc"
@@ -160,9 +89,10 @@ def main():
     dest = r"D:\_privat\projekte\python\filesystem_monitoring\test_dest"
     idm = IntegrityDataMover(src, dest) 
     
-    # idm.write_file_hashes()
     #idm.copy_tree()
-    idm.checksum_validation()
+    misslist = idm.get_missing_md5hashes_for_subdirs(src)
+    for m in misslist:
+        print(m)
 
     print("main(): all done")
     
