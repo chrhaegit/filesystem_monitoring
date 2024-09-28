@@ -1,0 +1,12 @@
+{
+    "transfers": [
+		{
+			"source": "D:\\download",
+			"destination": "D:\\_privat\\tmp\\zone_s_B\\download"
+		},
+		{
+			"source": "D:\\_privat\\abbts\\Unterricht",
+			"destination": "D:\\_privat\\tmp\\zone_s_B\\abb"
+		}
+	]
+}
