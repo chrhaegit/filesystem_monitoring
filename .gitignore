@@ -1,0 +1,18 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment / VSCode / tmpCode*.py
+.env/
+.vscode/
+tempCode*.py
+
+# data
+data/
+*.xlsx
+*.txt
+*VS.json
+
+
+
