@@ -1,12 +1,12 @@
 import os
 from pathlib import Path
 import shutil
-from md5helper import MD5Helper 
+from md5_snapshot import MD5Snapshot 
 
 class IntegrityDataMover:
 
     def __init__(self, src:str, dest:str):
-        self._md5helper = MD5Helper()
+        self._md5helper = MD5Snapshot()
         self._md5list_filename = "md5_hashes.txt"
 
         self._sourcepath = Path(src)

@@ -35,7 +35,7 @@ class DirectorySnapshot:
     def create_snapshot(self, overwrite=False, only_one_dir=False) -> tuple:
         start_time = time.time()           
         totalbytes = 0  
-        for dir, subdirs, files in os.walk(self._rootdir):
+        for dir, _, files in os.walk(self._rootdir):
             dir_path = Path(dir)
             self._snapshot["elements"].append(
                 {"type" : "DIR", 
@@ -47,18 +47,23 @@ class DirectorySnapshot:
                 if filename.startswith(".md5_hashes"):  #don't put it in the snapshot 
                     continue
                 file_path = dir_path / filename
-                file_size = file_path.stat().st_size                               
+                nr_of_bytes = file_path.stat().st_size                               
                 self._snapshot["elements"].append(
                     {"type" : "FILE", 
-                    "path" : file_path.as_posix(), 
-                    "filelen" : len(files)
+                     "path" : file_path.as_posix(), 
+                     "file_length" : f"{nr_of_bytes:,}"
                     }) 
 
-                totalbytes = totalbytes + file_size
+                totalbytes = totalbytes + nr_of_bytes
             if only_one_dir: 
                 break  # stop walking down the tree ... just snapshot the rootdir.
 
         runtime = time.time() - start_time
+        seconds = int(runtime)
+        milliseconds = int((runtime - seconds) * 1000) 
+        print(f"Runtime: {seconds}.{milliseconds:03d} seconds")
+        self._snapshot["runtime"] = f"{seconds}.{milliseconds:03d}"
+        self._snapshot["total_byte_size"] = f"{totalbytes:,}".replace(",", "'")
         return (runtime, totalbytes)
  
     def load_snapshot(self, number:int):
@@ -70,9 +75,6 @@ class DirectorySnapshot:
     def load_last_snapshot(self):
         file_path = DirectorySnapshot.SNAPSHOT_HYSTORY_DIR / self.get_last_snapshot_filename() 
         self.read_json_snapshot_file(file_path)
-
-    def get_snapshot_history_file_list(self):
-        return [p.name for p in Path(DirectorySnapshot.SNAPSHOT_HYSTORY_DIR).iterdir() if p.is_file()]
     
     def diff_snapshot(self, older_snapshot: 'DirectorySnapshot'):
         diff_list = {}
@@ -91,7 +93,9 @@ class DirectorySnapshot:
 
         return diff_list
     
-
+    def get_snapshot_history_file_list(self):
+        return [p.name for p in Path(DirectorySnapshot.SNAPSHOT_HYSTORY_DIR).iterdir() if p.is_file()]
+    
     def get_last_snapshot_number(self):
         history_list = self.get_snapshot_history_file_list()
         biggest_nr = 0
@@ -134,9 +138,19 @@ class DirectorySnapshot:
         with open(self._snapshot_filename, "w", encoding='utf-8') as f:
             json.dump(self.snapshot, f, ensure_ascii=False, indent=4)
 
-    def read_json_snapshot_file(self, file_path: Path):        
+    def read_json_snapshot_file(self, file_path: Path):   
         with open(file_path, "r",  encoding='utf-8') as fn:
             self._snapshot = json.load(fn)
+
+
+def main():
+    print("main(): start ...")    
+    # create_snapshot()
+    print_snapshots()
+
+    #runtime = helper.create_md5hashes_for_subdirs(src, overwrite=True)
+    # print(f"Runtime: --- {runtime:.3f} seconds.  Bytes={bytes}")  
+    print("main(): all done")
 
 def create_snapshot():
     src = r"C:\tmp\testsrc"
@@ -163,15 +177,6 @@ def print_snapshots():
 
     # for el in second_snapshot.get_element_list():
     #     print(el)
-
-def main():
-    print("main(): start ...")    
-    # create_snapshot()
-    print_snapshots()
-
-    #runtime = helper.create_md5hashes_for_subdirs(src, overwrite=True)
-    # print(f"Runtime: --- {runtime:.3f} seconds.  Bytes={bytes}")  
-    print("main(): all done")
     
 if __name__ == "__main__":
     main()

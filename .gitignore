@@ -12,7 +12,7 @@ tempCode*.py
 data/
 *.xlsx
 *.txt
-*VS.json
+*S.json
 
 
 

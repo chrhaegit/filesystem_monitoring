@@ -1,7 +1,7 @@
 
 from jsonconfig import JsonConfig
 from integrity_data_mover import IntegrityDataMover
-from md5helper import MD5Helper
+from md5_snapshot import MD5Snapshot
 
 
 class FilesystemMonitoring:
@@ -51,7 +51,7 @@ class FilesystemMonitoring:
                 print(item)
             raise FileExistsError("Some items already exist in the destination. No files were copied.")            
         # else: create md5 hashes in sourcepath
-        md5helper = MD5Helper()
+        md5helper = MD5Snapshot()
         runtime, totalbytes = md5helper.create_md5hashes_for_tree(idm.sourcepath, overwrite=True)
         print(f"created md5-hashes in source: {idm.sourcepath} in {runtime:.3f} seconds for a total of {totalbytes:,} bytes")
 
