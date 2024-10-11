@@ -1,0 +1,41 @@
+{
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+        "simple": {
+            "style": "{",
+            "format": "{asctime} {levelname:^8} {message}",
+            "datefmt": "%d.%m.%Y %H:%M:%S"
+        },
+        "verbose": {
+            "style": "{",
+            "format": "{asctime} {name:^23} {levelname:^8} (line={lineno:>4}){message}",
+            "datefmt": "%d.%m.%Y %H:%M:%S"
+        }
+    },
+    "handlers":{
+        "console": {
+            "class": "logging.StreamHandler",
+            "level": "INFO",
+            "formatter": "simple", 
+            "stream": "ext://sys.stdout"
+        },
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "level": "DEBUG",
+            "formatter": "verbose",
+            "maxBytes": 20000,
+            "backupCount": 3,
+            "encoding": "utf-8",
+            "filename": "./system/reports/report.log"
+        }
+    },
+    "loggers": {
+        "root": {
+            "level": "DEBUG",
+            "handlers": ["console", "file"],
+            "propagate": true
+        }
+
+    }
+}

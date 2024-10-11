@@ -1,5 +1,6 @@
 from datetime import datetime
 import json
+import logging
 import os
 from pathlib import Path
 
@@ -9,6 +10,7 @@ class Snapshot:
     SNAPSHOT_IN_PROGRESS_FILE_NAME = "xxxx-inprogress.json"
 
     def __init__(self, history_dir:Path, snapshot_filename_ending:str):
+        self.log = logging.getLogger(os.path.basename(__file__))
         self._nrof_saves = 0
         self._history_dir = history_dir
         self._snapshot_filename_ending = snapshot_filename_ending
@@ -46,9 +48,8 @@ class Snapshot:
         highest_number = -1
         last_snapshot_filename = None
         
-        for filename in os.listdir(self._history_dir):
-            # Check if the filename matches the pattern 'xxxx-JJJJMMDD-VS.json'
-            if filename.endswith('-VS.json') and len(filename) == 21 and filename[:4].isdigit():            
+        for filename in os.listdir(self._history_dir):            
+            if filename.endswith(self._snapshot_filename_ending) and filename[:4].isdigit():            
                 file_number = int(filename[:4])
                 if file_number > highest_number:
                     highest_number = file_number
@@ -58,7 +59,7 @@ class Snapshot:
     def create_new_snapshot_filename(self):
         strdate = f"{datetime.now().year}{datetime.now().month:02d}{datetime.now().day:02d}"
         next_snapshot_nr = self.get_last_snapshot_number() + 1
-        return f"{next_snapshot_nr:04d}-{strdate}-VS.json"
+        return f"{next_snapshot_nr:04d}-{strdate}{self._snapshot_filename_ending}"
 
     def load_snapshot(self, file:Path):        
         with open(file, "r",  encoding='utf-8') as f:
@@ -67,22 +68,24 @@ class Snapshot:
     def save_snapshot(self):
         if len(self._snapshot) == 0: 
             return
-        with open(self._snapshot_file_name, "w", encoding='utf-8') as f:
+        with open(self._snapshot["file_name"], "w", encoding='utf-8') as f:
             json.dump(self._snapshot, f, ensure_ascii=False, indent=4)
-            self._nrof_saves += 1        
+            self._nrof_saves += 1
+        self.log.debug(f"saved snapshot into file: {self._snapshot["file_name"]}")    
 
 def main():
     print("main(): start ...")
     history_dir = Path.cwd() / "system" / "checksum_snapshots"
-    snapshot = Snapshot(history_dir, "VS")
+    snapshot = Snapshot(history_dir, "-md5.json")
 
     print(f"last snapshot number: {snapshot.get_last_snapshot_number()}")
     print(f"last snapshot: {snapshot.get_last_snapshot_filename()}")
+    print(f"new snapshot filename: {snapshot.create_new_snapshot_filename()}")
     for f in snapshot.get_snapshot_history_file_list():
         print(f)
 
-    s2 = Snapshot(history_dir, "VS")
-    s2.load_snapshot("D:/_privat/projekte/python/filesystem_monitoring/system/checksum_snapshots/0006-20241003-VS.json")
+    s2 = Snapshot(history_dir, "-md5.json")
+    s2.load_snapshot("D:/_privat/projekte/python/filesystem_monitoring/system/checksum_snapshots/0002-20241003-md5.json")
     print(f"{s2._snapshot["file_name"]=}")
     print(f"{s2._snapshot["status"]=}")
     print("main(): all done")

@@ -12,7 +12,9 @@ tempCode*.py
 data/
 *.xlsx
 *.txt
-*S.json
+*.log
+*-md5.json
+*-VS.json
 
 
 
