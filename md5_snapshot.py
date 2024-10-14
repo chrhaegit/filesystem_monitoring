@@ -51,19 +51,16 @@ class MD5Snapshot (Snapshot):
     def create_md5_snapshot(self, rootdir:Path) -> tuple:
         start_time = time.time()   
         self.create_md5_snapshot_files(rootdir)
-
         tmp_byte_count = 0
         for file_name, md5 in self._snapshot["files"].items():            
             if md5 != "xxx":
                 continue    # already done in a previous run
-
             file_path = Path(file_name)
             tmp_byte_count += file_path.stat().st_size
             self._totalbytes += file_path.stat().st_size
             self._nroffiles += 1
             md5_val = MD5Dir.create_md5_from_file(file_path)
-            self._snapshot["files"][file_name] = md5_val 
-            
+            self._snapshot["files"][file_name] = md5_val             
             if tmp_byte_count >= MD5Snapshot.PROGRESS_STEP_SIZE:
                 self.update_file_infos("IN_PROGRESS")
                 self._runtime = self._runtime + (time.time() - start_time)               
@@ -71,7 +68,7 @@ class MD5Snapshot (Snapshot):
 
                 tmp_byte_count = 0
                 start_time = time.time() 
-
+        # end for-loop
         dest = MD5Snapshot.SNAPSHOT_HYSTORY_DIR / self.create_new_snapshot_filename()
         self._snapshot["file_name"] = dest.as_posix()
         self.update_file_infos("DONE")
@@ -103,7 +100,6 @@ class MD5Snapshot (Snapshot):
         self._snapshot["status"] = status    
         self.save_snapshot()  
         self.log.info(f"updated snapshot infos: {self}")
-
 
     def get_formatted_runtime_str(self)->str:        
         seconds = int(self._runtime)

@@ -153,13 +153,19 @@ def main():
     print("main(): all done")
 
 def create_snapshot():
+    print("main(): start ...")   
     src = r"C:\tmp\testsrc"
+    src = r"D:\Games\World_of_Tanks"
     snapshot = DirectorySnapshot(src)
-    snapshot.create_snapshot()
+    runtime, totalbytes = snapshot.create_snapshot()
     snapshot.write_json_snapshot()
+
+    print(f"Runtime: --- {runtime:.3f} seconds.  Bytes={totalbytes}")  
+    print("main(): all done")
 
 def print_snapshots():
     src = r"C:\tmp\testsrc"
+    src = r"D:\Games\World_of_Tanks"
     last_snapshot = DirectorySnapshot(src)
     last_snapshot.load_last_snapshot()
     second_snapshot = DirectorySnapshot(src)
@@ -179,4 +185,5 @@ def print_snapshots():
     #     print(el)
     
 if __name__ == "__main__":
-    main()
+    # main()
+    create_snapshot()
