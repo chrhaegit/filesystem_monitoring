@@ -9,12 +9,14 @@ __pycache__/
 tempCode*.py
 
 # data
-data/
+system/
+system/reports/
 *.xlsx
 *.txt
 *.log
 *-md5.json
 *-VS.json
+
 
 
 
