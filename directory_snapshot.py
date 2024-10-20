@@ -1,18 +1,27 @@
 import copy
 import glob
 import json
+import logging
 import os
 from pathlib import Path
 import time
 from datetime import datetime
+from snapshot import Snapshot
 
 class DirectorySnapshot:
 
-    SNAPSHOT_HYSTORY_DIR = Path.cwd() / "system" / "directorystructure_snapshots"
-
-    def __init__(self, rootDir:Path):
+    def __init__(self, log:logging.Logger, rootDir:Path):
+        Snapshot.__init__(self, "-VS.json")  
+        self.log = log
         self._rootdir = rootDir
         self._snapshot = {"elements":[]}
+
+        config = Snapshot.readjson_config()
+        if config and "DIRECTORY_HYSTORY_DIR" in config :
+            Snapshot.HYSTORY_DIR = config["DIRECTORY_HYSTORY_DIR"]
+            self.log.info(f"monitoring_config.json: set DIRECTORY_HYSTORY_DIR={Snapshot.HYSTORY_DIR}")
+        else:
+            Snapshot.HYSTORY_DIR = Path.cwd() / "system" / "directorystructure_snapshots"
 
     @property
     def snapshot(self):
@@ -67,13 +76,13 @@ class DirectorySnapshot:
         return (runtime, totalbytes)
  
     def load_snapshot(self, number:int):
-        search_pattern = os.path.join(DirectorySnapshot.SNAPSHOT_HYSTORY_DIR, f"{number:04d}-*-VS.json")
+        search_pattern = os.path.join(Snapshot.HYSTORY_DIR, f"{number:04d}-*-VS.json")
         matching_files = glob.glob(search_pattern)
         if matching_files: 
             self.read_json_snapshot_file(matching_files[0])
     
     def load_last_snapshot(self):
-        file_path = DirectorySnapshot.SNAPSHOT_HYSTORY_DIR / self.get_last_snapshot_filename() 
+        file_path = Snapshot.HYSTORY_DIR / Snapshot.get_last_snapshot_filename() 
         self.read_json_snapshot_file(file_path)
     
     def diff_snapshot(self, older_snapshot: 'DirectorySnapshot'):
@@ -91,52 +100,13 @@ class DirectorySnapshot:
             path = old_el["path"]
             diff_list[path] = "-"
 
-        return diff_list
-    
-    def get_snapshot_history_file_list(self):
-        return [p.name for p in Path(DirectorySnapshot.SNAPSHOT_HYSTORY_DIR).iterdir() if p.is_file()]
-    
-    def get_last_snapshot_number(self):
-        history_list = self.get_snapshot_history_file_list()
-        biggest_nr = 0
-        for fn in history_list:
-            nr = int (fn[0:4])
-            if nr > biggest_nr:
-                biggest_nr = nr           
-        return biggest_nr    
-    
-    def get_last_snapshot_filename(self):
-        highest_number = -1
-        last_snapshot_filename = None
-        
-        for filename in os.listdir(DirectorySnapshot.SNAPSHOT_HYSTORY_DIR):
-            # Check if the filename matches the pattern 'xxxx-JJJJMMDD-VS.json'
-            if filename.endswith('-VS.json') and len(filename) == 21 and filename[:4].isdigit():            
-                file_number = int(filename[:4])
-                if file_number > highest_number:
-                    highest_number = file_number
-                    last_snapshot_filename = filename
-        return last_snapshot_filename      
+        return diff_list     
     
     def get_snapshot_filename(self):        
         strdate = f"{datetime.now().year}{datetime.now().month:02d}{datetime.now().day:02d}"
-        next_snapshot_nr = self.get_last_snapshot_number() + 1
+        next_snapshot_nr = Snapshot.get_last_snapshot_number() + 1
         return f"{next_snapshot_nr:04d}-{strdate}-VS.json"
     
-    def write_snapshot(self):
-        self._snapshot_filename = DirectorySnapshot.SNAPSHOT_HYSTORY_DIR / self.get_snapshot_filename()
-        if len(self._snapshot) == 0: 
-            return
-        with open(self._snapshot_filename, "w", encoding='utf-8') as f:
-            for file_or_dir, list in self.snapshot.items():
-                f.write(f"{file_or_dir}: {list}\n")      
-
-    def write_json_snapshot(self):
-        self._snapshot_filename = DirectorySnapshot.SNAPSHOT_HYSTORY_DIR / self.get_snapshot_filename()
-        if len(self._snapshot) == 0: 
-            return
-        with open(self._snapshot_filename, "w", encoding='utf-8') as f:
-            json.dump(self.snapshot, f, ensure_ascii=False, indent=4)
 
     def read_json_snapshot_file(self, file_path: Path):   
         with open(file_path, "r",  encoding='utf-8') as fn:
@@ -145,8 +115,14 @@ class DirectorySnapshot:
 
 def main():
     print("main(): start ...")    
+    # ****** logging init ***********
+    with open("logging.json", "r") as f:
+        log_config = json.load(f)
+        logging.config.dictConfig(log_config)
+    log = logging.getLogger(os.path.basename(__file__))
+    
     # create_snapshot()
-    print_snapshots()
+    print_snapshots(log)
 
     #runtime = helper.create_md5hashes_for_subdirs(src, overwrite=True)
     # print(f"Runtime: --- {runtime:.3f} seconds.  Bytes={bytes}")  
@@ -154,21 +130,27 @@ def main():
 
 def create_snapshot():
     print("main(): start ...")   
+    # ****** logging init ***********
+    with open("logging.json", "r") as f:
+        log_config = json.load(f)
+        logging.config.dictConfig(log_config)
+    log = logging.getLogger(os.path.basename(__file__))
+
     src = r"C:\tmp\testsrc"
     src = r"D:\Games\World_of_Tanks"
-    snapshot = DirectorySnapshot(src)
+    snapshot = DirectorySnapshot(log, src)
     runtime, totalbytes = snapshot.create_snapshot()
-    snapshot.write_json_snapshot()
+    #snapshot.save_snapshot()
 
     print(f"Runtime: --- {runtime:.3f} seconds.  Bytes={totalbytes}")  
     print("main(): all done")
 
-def print_snapshots():
+def print_snapshots(log:logging.Logger):
     src = r"C:\tmp\testsrc"
     src = r"D:\Games\World_of_Tanks"
-    last_snapshot = DirectorySnapshot(src)
+    last_snapshot = DirectorySnapshot(log, src)
     last_snapshot.load_last_snapshot()
-    second_snapshot = DirectorySnapshot(src)
+    second_snapshot = DirectorySnapshot(log, src)
     second_snapshot.load_snapshot(2)
 
     diff_list = last_snapshot.diff_snapshot(second_snapshot)

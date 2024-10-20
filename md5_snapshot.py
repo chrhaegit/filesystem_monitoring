@@ -13,40 +13,25 @@ class MD5Snapshot (Snapshot):
     SNAPSHOT_HYSTORY_DIR = Path.cwd() / "system" / "checksum_snapshots"
     SNAPSHOT_IN_PROGRESS_FILE_NAME = "xxxx-inprogress.json"
     SNAPSHOT_IN_PROGRESS_FILE_PATH = SNAPSHOT_HYSTORY_DIR / SNAPSHOT_IN_PROGRESS_FILE_NAME
-    STATUS = ["INIT", "FILE_LIST", "IN_PROGRESS", "DONE"]
+    
     PROGRESS_STEP_SIZE = 1_000_000_000
 
     def __init__(self, log:logging.Logger):
-        Snapshot.__init__(self, MD5Snapshot.SNAPSHOT_HYSTORY_DIR, "-md5.json")
-        self.log = log
-        if self._snapshot["status"] == "INIT":
-            self._snapshot["nroffiles"] = 0
-            self._snapshot["totalbytes"] = 0 
-            self._snapshot["runtime"] = 0
-            self._snapshot["runtime seconds"] = "Runtime: 0 seconds"
-            self._snapshot["files"] = {}
-            self._nroffiles = 0
-            self._totalbytes = 0
-            self._runtime = 0.0
+        Snapshot.__init__(self, "-md5.json")
+
+        config = Snapshot.readjson_config()
+        if config and "SNAPSHOT_HYSTORY_DIR" in config :
+            Snapshot.HYSTORY_DIR = config["SNAPSHOT_HYSTORY_DIR"]
+            self.log.info(f"monitoring_config.json: set HYSTORY_DIR={Snapshot.HYSTORY_DIR}")
         else:
-            self._nroffiles = int(self._snapshot["nroffiles"])
-            self._totalbytes = int(str(self._snapshot["totalbytes"]).replace("'", ""))
-            self._runtime = float(self._snapshot["runtime"])
+            Snapshot.HYSTORY_DIR = Path.cwd() / "system" / "directorystructure_snapshots"
 
-    @property
-    def runtime(self):
-        return self._runtime
-
-    @property
-    def runtime_str(self):
-        return self._snapshot["runtime seconds"]
-    
-    @property
-    def totalbytes(self):
-        return self._totalbytes
-
-    def __str__(self):
-        return f"{self._nroffiles=} {self._totalbytes=}{self.runtime_str=}"                             
+        self.log = log
+        if self.status != "INIT":
+            self.nroffiles = Snapshot.get_nroffiles_from_snapshot()
+            self.totalbytes = Snapshot.get_totalbytes_from_snapshot()
+            self.runtime = Snapshot.get_runtime_from_snapshot()
+              
     
     def create_md5_snapshot(self, rootdir:Path) -> tuple:
         start_time = time.time()   
@@ -57,8 +42,8 @@ class MD5Snapshot (Snapshot):
                 continue    # already done in a previous run
             file_path = Path(file_name)
             tmp_byte_count += file_path.stat().st_size
-            self._totalbytes += file_path.stat().st_size
-            self._nroffiles += 1
+            self.totalbytes += file_path.stat().st_size
+            self.nroffiles += 1
             md5_val = MD5Dir.create_md5_from_file(file_path)
             self._snapshot["files"][file_name] = md5_val             
             if tmp_byte_count >= MD5Snapshot.PROGRESS_STEP_SIZE:
@@ -80,7 +65,7 @@ class MD5Snapshot (Snapshot):
             print(f"File '{MD5Snapshot.SNAPSHOT_IN_PROGRESS_FILE_PATH}' not found.")
     
     def create_md5_snapshot_files(self, rootdir: Path):  
-        if self._snapshot["status"] in ["FILE_LIST", "IN_PROGRESS", "DONE"]:
+        if self.status in ["FILE_LIST", "IN_PROGRESS", "DONE"]:
             return
                 
         for dir, _, files in os.walk(rootdir):
@@ -88,24 +73,9 @@ class MD5Snapshot (Snapshot):
             for filename in files:
                 file_path = dir_path / filename               
                 self._snapshot["files"][file_path.as_posix()] = "xxx"
-        self._snapshot["status"] = "FILE_LIST"  
+        self.status = "FILE_LIST"  
         self._snapshot["file_name"] = MD5Snapshot.SNAPSHOT_IN_PROGRESS_FILE_PATH.as_posix()
-        self.save_snapshot()    
-
-    def update_file_infos(self, status:str):
-        self._snapshot["runtime"] = self._runtime
-        self._snapshot["runtime seconds"] = self.get_formatted_runtime_str()
-        self._snapshot["totalbytes"] = f"{self._totalbytes:,}".replace(",", "'")
-        self._snapshot["nroffiles"] = self._nroffiles
-        self._snapshot["status"] = status    
-        self.save_snapshot()  
-        self.log.info(f"updated snapshot infos: {self}")
-
-    def get_formatted_runtime_str(self)->str:        
-        seconds = int(self._runtime)
-        milliseconds = int((self._runtime - seconds) * 1000) 
-        return f"Runtime: {seconds}.{milliseconds:03d} seconds"
-                  
+        self.save_snapshot()                      
 
 def main():
     # ****** logging init ***********
